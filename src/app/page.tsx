@@ -1,5 +1,5 @@
 "use client";
-
+import AuthGate, { CrmUser } from "@/components/AuthGate";
 import React, { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import {
@@ -22,7 +22,6 @@ import {
   LogOut,
   IndianRupee,
   Sparkles,
-  ArrowUpRight,
   X,
 } from "lucide-react";
 
@@ -81,9 +80,18 @@ type TimelineEntry = {
 type AttendanceStatus = "Present" | "Absent" | "Leave";
 
 export default function PioneerCRM() {
-  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(true);
-  const [currentRole, setCurrentRole] = useState<Role>("ADMIN");
-  const [currentUserName, setCurrentUserName] = useState<string>("Rohit Dixit (Management)");
+  return (
+    <AuthGate>
+      {(user, logout) => (
+        <PioneerCRMMain user={user} logout={logout} />
+      )}
+    </AuthGate>
+  );
+}
+
+function PioneerCRMMain({ user, logout }: { user: CrmUser; logout: () => void }) {
+  const currentRole = user.role;
+  const currentUserName = user.full_name;
 
   const [activeTab, setActiveTab] = useState<
     "attendance" | "assignments" | "tests" | "directory" | "fees" | "leads"
@@ -101,42 +109,11 @@ export default function PioneerCRM() {
   const [attendanceMap, setAttendanceMap] = useState<
     Record<string, { status: AttendanceStatus; whatsapp_notified: boolean }>
   >({});
-  const [savingAttendance, setSavingAttendance] = useState(false);
-  const [saveSuccess, setSaveSuccess] = useState(false);
 
-  const [assignmentMode, setAssignmentMode] = useState<"individual" | "class">("class");
-  const [targetBatchForHw, setTargetBatchForHw] = useState<string>("Class XII");
-  const [selectedStudentForHw, setSelectedStudentForHw] = useState<string>("");
-  const [hwSubject, setHwSubject] = useState<string>("Physics");
-  const [hwTopic, setHwTopic] = useState<string>("");
-  const [hwGiven, setHwGiven] = useState<number>(10);
-  const [hwCompleted, setHwCompleted] = useState<number>(10);
-  const [hwRemarks, setHwRemarks] = useState<string>("");
   const [recentAssignments, setRecentAssignments] = useState<any[]>([]);
-
-  const [testStudentId, setTestStudentId] = useState<string>("");
-  const [testCode, setTestCode] = useState<string>("Minor# 01");
-  const [testDate, setTestDate] = useState<string>("");
-  const [testType, setTestType] = useState<"Objective" | "Subjective">("Subjective");
-  const [marksObtained, setMarksObtained] = useState<number>(22);
-  const [maxMarks, setMaxMarks] = useState<number>(30);
-  const [batchRank, setBatchRank] = useState<string>("3");
-  const [testTeacherComments, setTestTeacherComments] = useState<string>("");
   const [recentTests, setRecentTests] = useState<any[]>([]);
-  const [answerSheetFile, setAnswerSheetFile] = useState<File | null>(null);
-  const [evaluatingAnswer, setEvaluatingAnswer] = useState<boolean>(false);
 
-  const [feeFilter, setFeeFilter] = useState<"all_due" | "today" | "week" | "month" | "overdue">("all_due");
-
-  const [newLeadName, setNewLeadName] = useState("");
-  const [newLeadFather, setNewLeadFather] = useState("");
-  const [newLeadMobile, setNewLeadMobile] = useState("");
-  const [newLeadClass, setNewLeadClass] = useState("Class XI");
-  const [newLeadBoard, setNewLeadBoard] = useState("CBSE");
-  const [newLeadMedium, setNewLeadMedium] = useState("English");
-  const [newLeadQuotedFee, setNewLeadQuotedFee] = useState<number>(45000);
-  const [newLeadCounsellor, setNewLeadCounsellor] = useState("Komal");
-
+  // Modals & UI state
   const [activeStudentModal, setActiveStudentModal] = useState<Student | null>(null);
   const [activeLeadModal, setActiveLeadModal] = useState<Lead | null>(null);
   const [modalTimeline, setModalTimeline] = useState<TimelineEntry[]>([]);
@@ -145,24 +122,62 @@ export default function PioneerCRM() {
   const [modalRisk, setModalRisk] = useState("Active");
   const [modalAcademicTag, setModalAcademicTag] = useState("Good Student");
   const [modalEMandate, setModalEMandate] = useState("Pending");
-  const [modalFeePaid, setModalFeePaid] = useState<number>(0);
-  const [modalNextFeeAmount, setModalNextFeeAmount] = useState<number>(0);
-  const [modalNextFeeDate, setModalNextFeeDate] = useState<string>("");
-  const [modalLeadStatus, setModalLeadStatus] = useState("New");
+  const [modalFeePaid, setModalFeePaid] = useState(0);
+  const [modalNextFeeAmount, setModalNextFeeAmount] = useState(0);
+  const [modalNextFeeDate, setModalNextFeeDate] = useState("");
   const [modalNoteText, setModalNoteText] = useState("");
-  const [modalAudioFile, setModalAudioFile] = useState<File | null>(null);
-  const [modalAudioDuration, setModalAudioDuration] = useState<number>(0);
-  const [analyzingCall, setAnalyzingCall] = useState(false);
-  const [savingModal, setSavingModal] = useState(false);
+  const [modalLeadStatus, setModalLeadStatus] = useState("New");
 
-  const uniqueBatches = Array.from(
-    new Set(["All", "Class XI", "Class XII", "Repeater", "10th", ...students.map((s) => s.batch_class)])
-  ).filter(Boolean);
+  const [modalAudioFile, setModalAudioFile] = useState<File | null>(null);
+  const [modalAudioDuration, setModalAudioDuration] = useState(0);
+  const [analyzingCall, setAnalyzingCall] = useState(false);
+
+  const [savingModal, setSavingModal] = useState(false);
+  const [savingAttendance, setSavingAttendance] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+
+  // Homework state
+  const [assignmentMode, setAssignmentMode] = useState<"class" | "individual">("class");
+  const [targetBatchForHw, setTargetBatchForHw] = useState("Class XI");
+  const [selectedStudentForHw, setSelectedStudentForHw] = useState("");
+  const [hwSubject, setHwSubject] = useState("Physics");
+  const [hwTopic, setHwTopic] = useState("");
+  const [hwGiven, setHwGiven] = useState(10);
+  const [hwCompleted, setHwCompleted] = useState(10);
+  const [hwRemarks, setHwRemarks] = useState("");
+
+  // Tests state
+  const [testStudentId, setTestStudentId] = useState("");
+  const [testCode, setTestCode] = useState("UNIT-01");
+  const [testDate, setTestDate] = useState("");
+  const [marksObtained, setMarksObtained] = useState(65);
+  const [maxMarks, setMaxMarks] = useState(100);
+  const [batchRank, setBatchRank] = useState("5");
+  const [testType, setTestType] = useState("Subjective");
+  const [testTeacherComments, setTestTeacherComments] = useState("");
+  const [answerSheetFile, setAnswerSheetFile] = useState<File | null>(null);
+  const [evaluatingAnswer, setEvaluatingAnswer] = useState(false);
+
+  // Leads creation state
+  const [newLeadName, setNewLeadName] = useState("");
+  const [newLeadFather, setNewLeadFather] = useState("");
+  const [newLeadMobile, setNewLeadMobile] = useState("");
+  const [newLeadClass, setNewLeadClass] = useState("Class XI");
+  const [newLeadBoard, setNewLeadBoard] = useState("CBSE");
+  const [newLeadMedium, setNewLeadMedium] = useState("English");
+  const [newLeadQuotedFee, setNewLeadQuotedFee] = useState(45000);
+  const [newLeadCounsellor, setNewLeadCounsellor] = useState(user.full_name.split(" ")[0] || "Komal");
+
+  // Fee filter
+  const [feeFilter, setFeeFilter] = useState<"all_due" | "today" | "week" | "month" | "overdue">("all_due");
+
+  const uniqueBatches = ["All", ...Array.from(new Set(students.map((s) => s.batch_class).filter(Boolean)))];
 
   useEffect(() => {
     const today = new Date().toISOString().split("T")[0];
     setSelectedDate(today);
     setTestDate(today);
+    fetchData(today);
   }, []);
 
   useEffect(() => {
@@ -170,18 +185,6 @@ export default function PioneerCRM() {
       fetchData(selectedDate);
     }
   }, [selectedDate]);
-
-  const handleRoleSwitch = (role: Role) => {
-    setCurrentRole(role);
-    if (role === "ADMIN") setCurrentUserName("Rohit Dixit / Naveen Sharma (Admin)");
-    if (role === "COUNSELLOR") setCurrentUserName("Komal (Counsellor)");
-    if (role === "TEACHER") {
-      setCurrentUserName("Senior Faculty (Teacher)");
-      if (activeTab === "fees" || activeTab === "leads") {
-        setActiveTab("attendance");
-      }
-    }
-  };
 
   async function fetchData(dateToFetch: string) {
     setLoading(true);
@@ -838,64 +841,6 @@ export default function PioneerCRM() {
     (s) => attendanceMap[s.student_id]?.status === "Leave"
   ).length;
 
-  if (!isLoggedIn) {
-    return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center p-4">
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-8 text-center space-y-6 shadow-2xl">
-          <img
-            src="/logo.jpg"
-            alt="Pioneer Academy"
-            className="h-24 mx-auto object-contain"
-          />
-          <div>
-            <h1 className="text-xl font-bold text-sky-400">
-              PIONEER ACADEMY, BIKANER
-            </h1>
-            <p className="text-xs text-yellow-400 mt-1">
-              Staff & Faculty Portal Login
-            </p>
-          </div>
-
-          <div className="space-y-3 text-left">
-            <p className="text-xs text-slate-400 font-semibold uppercase text-center">
-              Select Your Department Login
-            </p>
-            <button
-              onClick={() => {
-                handleRoleSwitch("ADMIN");
-                setIsLoggedIn(true);
-              }}
-              className="w-full bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold py-3 px-4 rounded-xl text-sm flex items-center justify-between cursor-pointer"
-            >
-              <span>🛡️ Management Login (Rohit / Naveen / Founder)</span>
-              <ArrowUpRight className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => {
-                handleRoleSwitch("COUNSELLOR");
-                setIsLoggedIn(true);
-              }}
-              className="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold py-3 px-4 rounded-xl text-sm flex items-center justify-between cursor-pointer"
-            >
-              <span>📞 Counsellor Login (Sales, Fees & Ops)</span>
-              <ArrowUpRight className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => {
-                handleRoleSwitch("TEACHER");
-                setIsLoggedIn(true);
-              }}
-              className="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-3 px-4 rounded-xl text-sm flex items-center justify-between cursor-pointer"
-            >
-              <span>👨‍🏫 Faculty / Teacher Login (Academics Only)</span>
-              <ArrowUpRight className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
       <header className="bg-black text-white border-b border-slate-800 sticky top-0 z-30 shadow-md">
@@ -911,7 +856,7 @@ export default function PioneerCRM() {
                 PIONEER ACADEMY, BIKANER
               </h1>
               <p className="text-[11px] text-yellow-400 font-medium">
-                Logged in as: {currentUserName}
+                Logged in as: {currentUserName} ({currentRole})
               </p>
             </div>
           </div>
@@ -990,31 +935,17 @@ export default function PioneerCRM() {
             )}
           </div>
 
-          <div className="flex items-center gap-2">
-            <div className="flex items-center bg-slate-900 border border-slate-700 rounded-xl p-1 text-xs shadow-inner">
-              <span className="px-2.5 text-slate-400 font-semibold flex items-center gap-1">
-                <ShieldCheck className="w-4 h-4 text-sky-400" /> Role:
-              </span>
-              {(["ADMIN", "COUNSELLOR", "TEACHER"] as Role[]).map((r) => (
-                <button
-                  key={r}
-                  onClick={() => handleRoleSwitch(r)}
-                  className={`px-3 py-1.5 rounded-lg font-bold transition cursor-pointer ${
-                    currentRole === r
-                      ? "bg-yellow-400 text-slate-950 shadow-sm"
-                      : "text-slate-300 hover:text-white"
-                  }`}
-                >
-                  {r}
-                </button>
-              ))}
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 bg-slate-900 border border-slate-700 px-3 py-1.5 rounded-xl text-xs">
+              <ShieldCheck className="w-4 h-4 text-sky-400" />
+              <span className="font-bold text-yellow-400 uppercase">{currentRole}</span>
             </div>
             <button
-              onClick={() => setIsLoggedIn(false)}
-              title="Switch Login"
-              className="p-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white cursor-pointer transition border border-slate-700"
+              onClick={logout}
+              title="Sign Out"
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-red-600/20 hover:bg-red-600/30 text-red-400 border border-red-500/40 cursor-pointer transition text-xs font-semibold"
             >
-              <LogOut className="w-4 h-4" />
+              <LogOut className="w-4 h-4" /> Sign Out
             </button>
           </div>
         </div>
@@ -1923,9 +1854,7 @@ export default function PioneerCRM() {
                                     s.next_installment_amount || rem
                                   } for ${s.full_name} (${s.student_id}).`;
                                   window.open(
-                                    `https://wa.me/91${s.contact_number?.toLowerCase() || "N/A"}
-                                      -10
-                                    )}?text=${encodeURIComponent(msg)}`,
+                                    `https://wa.me/91${s.contact_number?.slice(-10)}?text=${encodeURIComponent(msg)}`,
                                     "_blank"
                                   );
                                 }}
