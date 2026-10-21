@@ -5,9 +5,14 @@ const nextConfig = {
       bodySizeLimit: '10mb',
     },
   },
-  turbopack: {
-    root: "/Users/rohankaler/pioneer-crm",
-  },
+  // Only apply turbopack root locally if running on macOS/development
+  ...(process.env.NODE_ENV === 'development'
+    ? {
+        turbopack: {
+          root: "/Users/rohankaler/pioneer-crm",
+        },
+      }
+    : {}),
 };
 
 export default nextConfig;
