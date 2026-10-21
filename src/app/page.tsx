@@ -1923,7 +1923,7 @@ export default function PioneerCRM() {
                                     s.next_installment_amount || rem
                                   } for ${s.full_name} (${s.student_id}).`;
                                   window.open(
-                                    `https://wa.me/91${s.contact_number.slice(
+                                    `https://wa.me/91${s.contact_number?.toLowerCase() || "N/A"}
                                       -10
                                     )}?text=${encodeURIComponent(msg)}`,
                                     "_blank"
