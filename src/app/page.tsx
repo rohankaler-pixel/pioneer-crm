@@ -27,6 +27,7 @@ import {
   ChevronDown,
   ChevronUp,
   Edit3,
+  Filter,
 } from "lucide-react";
 
 type Role = "ADMIN" | "COUNSELLOR" | "TEACHER";
@@ -156,6 +157,9 @@ function PioneerCRMMain({ user, logout }: { user: CrmUser; logout: () => void })
   const [newStRemarks, setNewStRemarks] = useState("");
   const [creatingStudent, setCreatingStudent] = useState(false);
 
+  const [feeStartDate, setFeeStartDate] = useState<string>("");
+  const [feeEndDate, setFeeEndDate] = useState<string>("");
+
   const [modalAudioFile, setModalAudioFile] = useState<File | null>(null);
   const [modalAudioDuration, setModalAudioDuration] = useState(0);
   const [analyzingCall, setAnalyzingCall] = useState(false);
@@ -196,7 +200,7 @@ function PioneerCRMMain({ user, logout }: { user: CrmUser; logout: () => void })
   );
 
   const [feeFilter, setFeeFilter] = useState<
-    "all_due" | "today" | "week" | "month" | "overdue"
+    "all_due" | "today" | "week" | "month" | "overdue" | "custom"
   >("all_due");
 
   const uniqueBatches = [
@@ -218,6 +222,10 @@ function PioneerCRMMain({ user, logout }: { user: CrmUser; logout: () => void })
     const today = new Date().toISOString().split("T")[0];
     setSelectedDate(today);
     setTestDate(today);
+    setFeeEndDate(today);
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    setFeeStartDate(thirtyDaysAgo.toISOString().split("T")[0]);
     fetchData(today);
   }, []);
 
@@ -979,6 +987,13 @@ function PioneerCRMMain({ user, logout }: { user: CrmUser; logout: () => void })
     (s) => s.next_installment_date && s.next_installment_date < todayStr
   );
 
+  const customRangeList = studentsWithBalance.filter(
+    (s) =>
+      s.next_installment_date &&
+      (!feeStartDate || s.next_installment_date >= feeStartDate) &&
+      (!feeEndDate || s.next_installment_date <= feeEndDate)
+  );
+
   const sumExpected = (list: Student[]) =>
     list.reduce(
       (acc, s) =>
@@ -998,6 +1013,8 @@ function PioneerCRMMain({ user, logout }: { user: CrmUser; logout: () => void })
       ? dueMonthList
       : feeFilter === "overdue"
       ? overdueList
+      : feeFilter === "custom"
+      ? customRangeList
       : studentsWithBalance;
 
   const presentCount = filteredStudents.filter(
@@ -1917,7 +1934,72 @@ function PioneerCRMMain({ user, logout }: { user: CrmUser; logout: () => void })
 
         {activeTab === "fees" && currentRole !== "TEACHER" && (
           <div className="space-y-6">
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 sm:p-5 flex flex-wrap items-center justify-between gap-4">
+              <div className="flex items-center gap-2">
+                <Filter className="w-4 h-4 text-sky-600" />
+                <h3 className="font-bold text-sm text-slate-900">
+                  Custom Date Range Filter
+                </h3>
+              </div>
+              <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+                <div className="flex-1 sm:flex-initial">
+                  <label className="block text-[10px] font-bold uppercase text-slate-500 mb-1">
+                    Start Date
+                  </label>
+                  <input
+                    type="date"
+                    value={feeStartDate}
+                    onChange={(e) => {
+                      setFeeStartDate(e.target.value);
+                      setFeeFilter("custom");
+                    }}
+                    className="w-full sm:w-auto border border-slate-300 rounded-xl px-3 py-2 text-xs font-medium bg-slate-50 outline-none"
+                  />
+                </div>
+                <div className="flex-1 sm:flex-initial">
+                  <label className="block text-[10px] font-bold uppercase text-slate-500 mb-1">
+                    End Date
+                  </label>
+                  <input
+                    type="date"
+                    value={feeEndDate}
+                    onChange={(e) => {
+                      setFeeEndDate(e.target.value);
+                      setFeeFilter("custom");
+                    }}
+                    className="w-full sm:w-auto border border-slate-300 rounded-xl px-3 py-2 text-xs font-medium bg-slate-50 outline-none"
+                  />
+                </div>
+                <button
+                  onClick={() => setFeeFilter("custom")}
+                  className="w-full sm:w-auto self-end bg-sky-600 hover:bg-sky-500 text-white font-bold px-4 py-2 rounded-xl text-xs transition cursor-pointer shadow-sm"
+                >
+                  Apply Range
+                </button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
+              <div
+                onClick={() => setFeeFilter("custom")}
+                className={`p-4 sm:p-5 rounded-2xl border cursor-pointer transition ${
+                  feeFilter === "custom"
+                    ? "bg-sky-700 text-white border-sky-700 shadow-md ring-2 ring-sky-400"
+                    : "bg-white border-slate-200 hover:border-sky-400"
+                }`}
+              >
+                <span className="text-[10px] font-bold uppercase opacity-85 block">
+                  Custom Period
+                </span>
+                <p className="text-base sm:text-xl font-black mt-1.5 truncate">
+                  ₹{sumExpected(customRangeList).toLocaleString("en-IN")}
+                </p>
+                <span className="text-[11px] opacity-75 mt-1 block">
+                  {customRangeList.length} Students ({feeStartDate || "Start"} to{" "}
+                  {feeEndDate || "End"})
+                </span>
+              </div>
+
               <div
                 onClick={() => setFeeFilter("all_due")}
                 className={`p-4 sm:p-5 rounded-2xl border cursor-pointer transition ${
@@ -1926,10 +2008,10 @@ function PioneerCRMMain({ user, logout }: { user: CrmUser; logout: () => void })
                     : "bg-white border-slate-200 hover:border-slate-400"
                 }`}
               >
-                <span className="text-[11px] font-bold uppercase opacity-75">
-                  Total Pending Fees
+                <span className="text-[10px] font-bold uppercase opacity-75 block">
+                  Total Pending
                 </span>
-                <p className="text-lg sm:text-2xl font-black mt-1.5">
+                <p className="text-base sm:text-xl font-black mt-1.5 truncate">
                   ₹{totalPendingFeeSum.toLocaleString("en-IN")}
                 </p>
                 <span className="text-[11px] opacity-75 mt-1 block">
@@ -1945,10 +2027,10 @@ function PioneerCRMMain({ user, logout }: { user: CrmUser; logout: () => void })
                     : "bg-white border-slate-200 hover:border-emerald-400"
                 }`}
               >
-                <span className="text-[11px] font-bold uppercase opacity-75">
+                <span className="text-[10px] font-bold uppercase opacity-75 block">
                   Expected Today
                 </span>
-                <p className="text-lg sm:text-2xl font-black mt-1.5">
+                <p className="text-base sm:text-xl font-black mt-1.5 truncate">
                   ₹{sumExpected(dueTodayList).toLocaleString("en-IN")}
                 </p>
                 <span className="text-[11px] opacity-75 mt-1 block">
@@ -1964,10 +2046,10 @@ function PioneerCRMMain({ user, logout }: { user: CrmUser; logout: () => void })
                     : "bg-white border-slate-200 hover:border-sky-400"
                 }`}
               >
-                <span className="text-[11px] font-bold uppercase opacity-75">
+                <span className="text-[10px] font-bold uppercase opacity-75 block">
                   This Week
                 </span>
-                <p className="text-lg sm:text-2xl font-black mt-1.5">
+                <p className="text-base sm:text-xl font-black mt-1.5 truncate">
                   ₹{sumExpected(dueWeekList).toLocaleString("en-IN")}
                 </p>
                 <span className="text-[11px] opacity-75 mt-1 block">
@@ -1983,10 +2065,10 @@ function PioneerCRMMain({ user, logout }: { user: CrmUser; logout: () => void })
                     : "bg-white border-slate-200 hover:border-indigo-400"
                 }`}
               >
-                <span className="text-[11px] font-bold uppercase opacity-75">
+                <span className="text-[10px] font-bold uppercase opacity-75 block">
                   This Month
                 </span>
-                <p className="text-lg sm:text-2xl font-black mt-1.5">
+                <p className="text-base sm:text-xl font-black mt-1.5 truncate">
                   ₹{sumExpected(dueMonthList).toLocaleString("en-IN")}
                 </p>
                 <span className="text-[11px] opacity-75 mt-1 block">
@@ -2002,10 +2084,10 @@ function PioneerCRMMain({ user, logout }: { user: CrmUser; logout: () => void })
                     : "bg-white border-slate-200 hover:border-rose-400"
                 }`}
               >
-                <span className="text-[11px] font-bold uppercase opacity-75">
-                  Overdue Promises
+                <span className="text-[10px] font-bold uppercase opacity-75 block">
+                  Overdue
                 </span>
-                <p className="text-lg sm:text-2xl font-black mt-1.5">
+                <p className="text-base sm:text-xl font-black mt-1.5 truncate">
                   ₹{sumExpected(overdueList).toLocaleString("en-IN")}
                 </p>
                 <span className="text-[11px] opacity-75 mt-1 block">
@@ -2018,7 +2100,10 @@ function PioneerCRMMain({ user, logout }: { user: CrmUser; logout: () => void })
               <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
                 <div>
                   <h2 className="font-bold text-base text-slate-900">
-                    Fee Follow-up Queue ({displayedFeeStudents.length} Students)
+                    Fee Follow-up Queue ({displayedFeeStudents.length} Students) — Filter:{" "}
+                    <span className="text-sky-600 uppercase font-mono text-xs">
+                      {feeFilter}
+                    </span>
                   </h2>
                   <p className="text-xs text-slate-500 mt-0.5">
                     Click any student row to update Total Fee, Fee Paid, Next
