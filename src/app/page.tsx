@@ -28,6 +28,8 @@ import {
   ChevronUp,
   Edit3,
   Filter,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 
 type Role = "ADMIN" | "COUNSELLOR" | "TEACHER";
@@ -202,6 +204,24 @@ function PioneerCRMMain({ user, logout }: { user: CrmUser; logout: () => void })
   const [feeFilter, setFeeFilter] = useState<
     "all_due" | "today" | "week" | "month" | "overdue" | "custom"
   >("all_due");
+
+  const [attPage, setAttPage] = useState<number>(1);
+  const [attPageSize, setAttPageSize] = useState<number>(100);
+
+  const [dirPage, setDirPage] = useState<number>(1);
+  const [dirPageSize, setDirPageSize] = useState<number>(100);
+
+  const [feePage, setFeePage] = useState<number>(1);
+  const [feePageSize, setFeePageSize] = useState<number>(100);
+
+  useEffect(() => {
+    setAttPage(1);
+    setDirPage(1);
+  }, [selectedBatch, searchQuery]);
+
+  useEffect(() => {
+    setFeePage(1);
+  }, [feeFilter, feeStartDate, feeEndDate]);
 
   const uniqueBatches = [
     "All",
@@ -795,10 +815,10 @@ function PioneerCRMMain({ user, logout }: { user: CrmUser; logout: () => void })
       year: "numeric",
     });
     const message =
-      `🙏 *Namaste from Pioneer Academy, Bikaner*\n\n` +
-      `This is an automated attendance alert to inform you that your ward *${student.full_name.toUpperCase()}* (ID: ${student.student_id}, Batch: ${student.batch_class}) is marked *ABSENT* today (*${formattedDate}*).\n\n` +
-      `Regular attendance is critical for test preparation. Please inform the academy office if the absence is due to an emergency.\n\n` +
-      `– *Academic Team, Pioneer Academy*`;
+      `Namaste from Pioneer Academy, Bikaner.\n\n` +
+      `This is to inform you that your ward ${student.full_name.toUpperCase()} (ID: ${student.student_id}, Batch: ${student.batch_class}) is marked ABSENT today (${formattedDate}). Regular attendance is essential for academic progress. Kindly inform the academy office in case of an emergency.\n\n` +
+      `यह सूचित किया जाता है कि आपका पाल्य ${student.full_name.toUpperCase()} (आईडी: ${student.student_id}, बैच: ${student.batch_class}) आज (${formattedDate}) अनुपस्थित है। शैक्षणिक प्रगति के लिए नियमित उपस्थिति आवश्यक है। किसी आपात स्थिति की सूचना कृपया अकादमी कार्यालय में दें।\n\n` +
+      `Regards,\nAcademic Team, Pioneer Academy, Bikaner`;
 
     window.open(
       `https://wa.me/91${phoneToUse.slice(-10)}?text=${encodeURIComponent(message)}`,
@@ -1026,6 +1046,27 @@ function PioneerCRMMain({ user, logout }: { user: CrmUser; logout: () => void })
   const leaveCount = filteredStudents.filter(
     (s) => attendanceMap[s.student_id]?.status === "Leave"
   ).length;
+
+  const attTotalPages = Math.max(1, Math.ceil(filteredStudents.length / attPageSize));
+  const safeAttPage = Math.min(attPage, attTotalPages);
+  const paginatedAttStudents = filteredStudents.slice(
+    (safeAttPage - 1) * attPageSize,
+    safeAttPage * attPageSize
+  );
+
+  const dirTotalPages = Math.max(1, Math.ceil(filteredStudents.length / dirPageSize));
+  const safeDirPage = Math.min(dirPage, dirTotalPages);
+  const paginatedDirStudents = filteredStudents.slice(
+    (safeDirPage - 1) * dirPageSize,
+    safeDirPage * dirPageSize
+  );
+
+  const feeTotalPages = Math.max(1, Math.ceil(displayedFeeStudents.length / feePageSize));
+  const safeFeePage = Math.min(feePage, feeTotalPages);
+  const paginatedFeeStudents = displayedFeeStudents.slice(
+    (safeFeePage - 1) * feePageSize,
+    safeFeePage * feePageSize
+  );
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
@@ -1273,19 +1314,62 @@ function PioneerCRMMain({ user, logout }: { user: CrmUser; logout: () => void })
                 </div>
               )}
 
-              <div className="flex flex-wrap items-center gap-2 sm:gap-4 my-4 text-xs">
-                <span className="px-3 py-1.5 rounded-xl bg-slate-100 font-semibold text-slate-700">
-                  Total: <b className="text-slate-900">{filteredStudents.length}</b>
-                </span>
-                <span className="px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-800 font-semibold border border-emerald-100">
-                  Present: <b>{presentCount}</b>
-                </span>
-                <span className="px-3 py-1.5 rounded-xl bg-rose-50 text-rose-800 font-semibold border border-rose-100">
-                  Absent: <b>{absentStudents.length}</b>
-                </span>
-                <span className="px-3 py-1.5 rounded-xl bg-amber-50 text-amber-800 font-semibold border border-amber-100">
-                  Leave: <b>{leaveCount}</b>
-                </span>
+              <div className="flex flex-wrap items-center justify-between gap-3 my-4 text-xs">
+                <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                  <span className="px-3 py-1.5 rounded-xl bg-slate-100 font-semibold text-slate-700">
+                    Total: <b className="text-slate-900">{filteredStudents.length}</b>
+                  </span>
+                  <span className="px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-800 font-semibold border border-emerald-100">
+                    Present: <b>{presentCount}</b>
+                  </span>
+                  <span className="px-3 py-1.5 rounded-xl bg-rose-50 text-rose-800 font-semibold border border-rose-100">
+                    Absent: <b>{absentStudents.length}</b>
+                  </span>
+                  <span className="px-3 py-1.5 rounded-xl bg-amber-50 text-amber-800 font-semibold border border-amber-100">
+                    Leave: <b>{leaveCount}</b>
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 px-2.5 py-1.5 rounded-xl">
+                  <label className="text-[11px] font-bold text-slate-500 uppercase">
+                    Show:
+                  </label>
+                  <select
+                    value={attPageSize}
+                    onChange={(e) => {
+                      setAttPageSize(Number(e.target.value));
+                      setAttPage(1);
+                    }}
+                    className="border border-slate-300 rounded-lg px-2 py-1 text-xs font-bold bg-white outline-none cursor-pointer"
+                  >
+                    {[5, 10, 50, 100, 200].map((sz) => (
+                      <option key={sz} value={sz}>
+                        {sz} / page
+                      </option>
+                    ))}
+                  </select>
+                  <div className="flex items-center gap-1 pl-1 border-l border-slate-200">
+                    <button
+                      type="button"
+                      disabled={safeAttPage <= 1}
+                      onClick={() => setAttPage((p) => Math.max(1, p - 1))}
+                      className="p-1 rounded-lg border border-slate-300 bg-white hover:bg-slate-100 disabled:opacity-40 cursor-pointer"
+                    >
+                      <ChevronLeft className="w-3.5 h-3.5" />
+                    </button>
+                    <span className="px-1.5 font-semibold text-slate-700 whitespace-nowrap">
+                      Page {safeAttPage} of {attTotalPages}
+                    </span>
+                    <button
+                      type="button"
+                      disabled={safeAttPage >= attTotalPages}
+                      onClick={() => setAttPage((p) => Math.min(attTotalPages, p + 1))}
+                      className="p-1 rounded-lg border border-slate-300 bg-white hover:bg-slate-100 disabled:opacity-40 cursor-pointer"
+                    >
+                      <ChevronRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
               </div>
 
               {loading ? (
@@ -1293,8 +1377,9 @@ function PioneerCRMMain({ user, logout }: { user: CrmUser; logout: () => void })
                   Loading students...
                 </p>
               ) : (
-                <div className="overflow-y-auto max-h-[550px] divide-y divide-slate-100 pr-1">
-                  {filteredStudents.map((student) => {
+                <>
+                <div className="overflow-y-auto max-h-[600px] divide-y divide-slate-100 pr-1">
+                  {paginatedAttStudents.map((student) => {
                     const current =
                       attendanceMap[student.student_id]?.status || "Present";
                     return (
@@ -1355,6 +1440,40 @@ function PioneerCRMMain({ user, logout }: { user: CrmUser; logout: () => void })
                     );
                   })}
                 </div>
+                {filteredStudents.length > 0 && (
+                  <div className="mt-4 pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-600">
+                    <span>
+                      Showing{" "}
+                      <b>
+                        {(safeAttPage - 1) * attPageSize + 1}–
+                        {Math.min(safeAttPage * attPageSize, filteredStudents.length)}
+                      </b>{" "}
+                      of <b>{filteredStudents.length}</b> students
+                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        disabled={safeAttPage <= 1}
+                        onClick={() => setAttPage((p) => Math.max(1, p - 1))}
+                        className="px-3 py-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 font-semibold disabled:opacity-40 cursor-pointer"
+                      >
+                        Previous
+                      </button>
+                      <span className="px-2 font-bold text-slate-800">
+                        Page {safeAttPage} of {attTotalPages}
+                      </span>
+                      <button
+                        type="button"
+                        disabled={safeAttPage >= attTotalPages}
+                        onClick={() => setAttPage((p) => Math.min(attTotalPages, p + 1))}
+                        className="px-3 py-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 font-semibold disabled:opacity-40 cursor-pointer"
+                      >
+                        Next
+                      </button>
+                    </div>
+                  </div>
+                )}
+                </>
               )}
             </div>
 
@@ -1843,6 +1962,46 @@ function PioneerCRMMain({ user, logout }: { user: CrmUser; logout: () => void })
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="flex-1 sm:w-56 border border-slate-300 rounded-xl px-3.5 py-2 text-xs sm:text-sm bg-slate-50 outline-none"
                 />
+                <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 px-2.5 py-1.5 rounded-xl text-xs">
+                  <label className="text-[11px] font-bold text-slate-500 uppercase">
+                    Show:
+                  </label>
+                  <select
+                    value={dirPageSize}
+                    onChange={(e) => {
+                      setDirPageSize(Number(e.target.value));
+                      setDirPage(1);
+                    }}
+                    className="border border-slate-300 rounded-lg px-2 py-1 text-xs font-bold bg-white outline-none cursor-pointer"
+                  >
+                    {[5, 10, 50, 100, 200].map((sz) => (
+                      <option key={sz} value={sz}>
+                        {sz} / page
+                      </option>
+                    ))}
+                  </select>
+                  <div className="flex items-center gap-1 pl-1 border-l border-slate-200">
+                    <button
+                      type="button"
+                      disabled={safeDirPage <= 1}
+                      onClick={() => setDirPage((p) => Math.max(1, p - 1))}
+                      className="p-1 rounded-lg border border-slate-300 bg-white hover:bg-slate-100 disabled:opacity-40 cursor-pointer"
+                    >
+                      <ChevronLeft className="w-3.5 h-3.5" />
+                    </button>
+                    <span className="px-1.5 font-semibold text-slate-700 whitespace-nowrap">
+                      Page {safeDirPage} of {dirTotalPages}
+                    </span>
+                    <button
+                      type="button"
+                      disabled={safeDirPage >= dirTotalPages}
+                      onClick={() => setDirPage((p) => Math.min(dirTotalPages, p + 1))}
+                      className="p-1 rounded-lg border border-slate-300 bg-white hover:bg-slate-100 disabled:opacity-40 cursor-pointer"
+                    >
+                      <ChevronRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
                 {currentRole !== "TEACHER" && (
                   <button
                     type="button"
@@ -1874,7 +2033,7 @@ function PioneerCRMMain({ user, logout }: { user: CrmUser; logout: () => void })
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {filteredStudents.slice(0, 200).map((s) => (
+                  {paginatedDirStudents.map((s) => (
                     <tr
                       key={s.student_id}
                       onClick={() => openStudentProfile(s)}
@@ -1929,6 +2088,39 @@ function PioneerCRMMain({ user, logout }: { user: CrmUser; logout: () => void })
                 </tbody>
               </table>
             </div>
+            {filteredStudents.length > 0 && (
+              <div className="mt-4 pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-600">
+                <span>
+                  Showing{" "}
+                  <b>
+                    {(safeDirPage - 1) * dirPageSize + 1}–
+                    {Math.min(safeDirPage * dirPageSize, filteredStudents.length)}
+                  </b>{" "}
+                  of <b>{filteredStudents.length}</b> students
+                </span>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    disabled={safeDirPage <= 1}
+                    onClick={() => setDirPage((p) => Math.max(1, p - 1))}
+                    className="px-3 py-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 font-semibold disabled:opacity-40 cursor-pointer"
+                  >
+                    Previous
+                  </button>
+                  <span className="px-2 font-bold text-slate-800">
+                    Page {safeDirPage} of {dirTotalPages}
+                  </span>
+                  <button
+                    type="button"
+                    disabled={safeDirPage >= dirTotalPages}
+                    onClick={() => setDirPage((p) => Math.min(dirTotalPages, p + 1))}
+                    className="px-3 py-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 font-semibold disabled:opacity-40 cursor-pointer"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -2097,7 +2289,7 @@ function PioneerCRMMain({ user, logout }: { user: CrmUser; logout: () => void })
             </div>
 
             <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 sm:p-6">
-              <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
+              <div className="flex flex-wrap items-center justify-between gap-3 mb-4 pb-3 border-b border-slate-100">
                 <div>
                   <h2 className="font-bold text-base text-slate-900">
                     Fee Follow-up Queue ({displayedFeeStudents.length} Students) — Filter:{" "}
@@ -2109,6 +2301,47 @@ function PioneerCRMMain({ user, logout }: { user: CrmUser; logout: () => void })
                     Click any student row to update Total Fee, Fee Paid, Next
                     Installment Date, or E-Mandate.
                   </p>
+                </div>
+
+                <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 px-2.5 py-1.5 rounded-xl text-xs">
+                  <label className="text-[11px] font-bold text-slate-500 uppercase">
+                    Show:
+                  </label>
+                  <select
+                    value={feePageSize}
+                    onChange={(e) => {
+                      setFeePageSize(Number(e.target.value));
+                      setFeePage(1);
+                    }}
+                    className="border border-slate-300 rounded-lg px-2 py-1 text-xs font-bold bg-white outline-none cursor-pointer"
+                  >
+                    {[5, 10, 50, 100, 200].map((sz) => (
+                      <option key={sz} value={sz}>
+                        {sz} / page
+                      </option>
+                    ))}
+                  </select>
+                  <div className="flex items-center gap-1 pl-1 border-l border-slate-200">
+                    <button
+                      type="button"
+                      disabled={safeFeePage <= 1}
+                      onClick={() => setFeePage((p) => Math.max(1, p - 1))}
+                      className="p-1 rounded-lg border border-slate-300 bg-white hover:bg-slate-100 disabled:opacity-40 cursor-pointer"
+                    >
+                      <ChevronLeft className="w-3.5 h-3.5" />
+                    </button>
+                    <span className="px-1.5 font-semibold text-slate-700 whitespace-nowrap">
+                      Page {safeFeePage} of {feeTotalPages}
+                    </span>
+                    <button
+                      type="button"
+                      disabled={safeFeePage >= feeTotalPages}
+                      onClick={() => setFeePage((p) => Math.min(feeTotalPages, p + 1))}
+                      className="p-1 rounded-lg border border-slate-300 bg-white hover:bg-slate-100 disabled:opacity-40 cursor-pointer"
+                    >
+                      <ChevronRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -2126,7 +2359,7 @@ function PioneerCRMMain({ user, logout }: { user: CrmUser; logout: () => void })
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {displayedFeeStudents.slice(0, 100).map((s) => {
+                    {paginatedFeeStudents.map((s) => {
                       const rem =
                         (s.total_fees || 0) - (s.fee_paid_till_date || 0);
                       return (
@@ -2175,9 +2408,17 @@ function PioneerCRMMain({ user, logout }: { user: CrmUser; logout: () => void })
                             {s.contact_number && (
                               <button
                                 onClick={() => {
-                                  const msg = `Namaste from Pioneer Academy, Bikaner. Gentle reminder regarding the pending fee installment of ₹${
+                                  const dueAmt = (
                                     s.next_installment_amount || rem
-                                  } for ${s.full_name} (${s.student_id}).`;
+                                  ).toLocaleString("en-IN");
+                                  const dueDateText = s.next_installment_date
+                                    ? ` (Due Date: ${s.next_installment_date})`
+                                    : "";
+                                  const msg =
+                                    `Namaste from Pioneer Academy, Bikaner.\n\n` +
+                                    `This is a gentle reminder regarding the pending fee installment of Rs. ${dueAmt}${dueDateText} for ${s.full_name.toUpperCase()} (ID: ${s.student_id}, Batch: ${s.batch_class}). Kindly arrange for timely payment.\n\n` +
+                                    `यह आपके पाल्य ${s.full_name.toUpperCase()} (आईडी: ${s.student_id}, बैच: ${s.batch_class}) की बकाया शुल्क किश्त राशि रुपये ${dueAmt}${dueDateText} के भुगतान हेतु एक विनम्र अनुस्मारक है। कृपया समय पर भुगतान सुनिश्चित करें।\n\n` +
+                                    `Regards,\nAccounts Office, Pioneer Academy, Bikaner`;
                                   window.open(
                                     `https://wa.me/91${s.contact_number?.slice(
                                       -10
@@ -2197,6 +2438,39 @@ function PioneerCRMMain({ user, logout }: { user: CrmUser; logout: () => void })
                   </tbody>
                 </table>
               </div>
+              {displayedFeeStudents.length > 0 && (
+                <div className="mt-4 pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-600">
+                  <span>
+                    Showing{" "}
+                    <b>
+                      {(safeFeePage - 1) * feePageSize + 1}–
+                      {Math.min(safeFeePage * feePageSize, displayedFeeStudents.length)}
+                    </b>{" "}
+                    of <b>{displayedFeeStudents.length}</b> students
+                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      disabled={safeFeePage <= 1}
+                      onClick={() => setFeePage((p) => Math.max(1, p - 1))}
+                      className="px-3 py-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 font-semibold disabled:opacity-40 cursor-pointer"
+                    >
+                      Previous
+                    </button>
+                    <span className="px-2 font-bold text-slate-800">
+                      Page {safeFeePage} of {feeTotalPages}
+                    </span>
+                    <button
+                      type="button"
+                      disabled={safeFeePage >= feeTotalPages}
+                      onClick={() => setFeePage((p) => Math.min(feeTotalPages, p + 1))}
+                      className="px-3 py-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 font-semibold disabled:opacity-40 cursor-pointer"
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
